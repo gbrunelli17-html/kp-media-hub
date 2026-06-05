@@ -30,14 +30,23 @@ const IMAGE_STUDIO = {
 
   // ── INIT ────────────────────────────────────────────
   initDropZones() {
+    if (this._dropZonesReady) return;
+    this._dropZonesReady = true;
     this._bindDropZone('img-dropzone', 'player', 'img-file-input');
     this._bindDropZone('img-ref-dropzone', 'reference', 'img-ref-file-input');
+  },
+
+  _isImageFile(file) {
+    if (file.type?.startsWith('image/')) return true;
+    return /\.(jpe?g|png|gif|webp)$/i.test(file.name || '');
   },
 
   _bindDropZone(zoneId, type, inputId) {
     const zone = document.getElementById(zoneId);
     const input = document.getElementById(inputId);
     if (!zone || !input) return;
+    if (zone.dataset.dropBound === '1') return;
+    zone.dataset.dropBound = '1';
 
     zone.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -57,7 +66,7 @@ const IMAGE_STUDIO = {
 
   // ── FILE HANDLING ───────────────────────────────────
   handleFiles(fileList, type) {
-    const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    const files = Array.from(fileList).filter(f => this._isImageFile(f));
     if (!files.length) {
       APP.toast('Please upload an image file (JPG or PNG).', 'error');
       return;
@@ -78,6 +87,73 @@ const IMAGE_STUDIO = {
     }
   },
 
+  _mediaTypeFromDataUrl(dataUrl, fallback = 'image/jpeg') {
+    return (dataUrl.match(/^data:([^;]+);/) || [])[1] || fallback;
+  },
+
+  async _prepareVisionPayload(dataUrl, maxEdge = 1568) {
+    const maxBytes = 4.5 * 1024 * 1024;
+
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        const longest = Math.max(width, height);
+        const scale = Math.min(1, maxEdge / longest);
+        width = Math.max(1, Math.round(width * scale));
+        height = Math.max(1, Math.round(height * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+
+        const encode = (quality) => {
+          canvas.toBlob((blob) => {
+            if (!blob) return reject(new Error('Could not prepare image for analysis.'));
+            if (blob.size > maxBytes) {
+              if (quality > 0.45) {
+                encode(quality - 0.1);
+                return;
+              }
+              if (maxEdge > 768) {
+                this._prepareVisionPayload(dataUrl, 768).then(resolve).catch(reject);
+                return;
+              }
+              return reject(new Error('Image is too large for analysis. Try a smaller screenshot.'));
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+              const out = reader.result;
+              resolve({
+                base64: out.split(',')[1],
+                mediaType: 'image/jpeg',
+              });
+            };
+            reader.onerror = () => reject(new Error('Could not read prepared image.'));
+            reader.readAsDataURL(blob);
+          }, 'image/jpeg', quality);
+        };
+
+        encode(0.85);
+      };
+      img.onerror = () => reject(new Error('Could not read image.'));
+      img.src = dataUrl;
+    });
+  },
+
+  async _visionPayloadFromDataUrl(dataUrl, declaredType) {
+    try {
+      return await this._prepareVisionPayload(dataUrl);
+    } catch {
+      const mediaType = this._mediaTypeFromDataUrl(dataUrl, declaredType);
+      const base64 = dataUrl.split(',')[1];
+      const bytes = Math.ceil((base64.length * 3) / 4);
+      if (bytes <= 4.5 * 1024 * 1024) return { base64, mediaType };
+      throw new Error('Image is too large for analysis. Try a smaller screenshot.');
+    }
+  },
+
   _addPlayerPhoto(file) {
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -86,7 +162,7 @@ const IMAGE_STUDIO = {
         id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
         dataUrl,
         base64: dataUrl.split(',')[1],
-        mediaType: file.type || 'image/jpeg',
+        mediaType: this._mediaTypeFromDataUrl(dataUrl, file.type || 'image/jpeg'),
         filename: file.name,
         analysis: null,
         analyzing: true,
@@ -101,9 +177,10 @@ const IMAGE_STUDIO = {
 
   async _analyzePlayerPhoto(photo) {
     try {
+      const { base64, mediaType } = await this._visionPayloadFromDataUrl(photo.dataUrl, photo.mediaType);
       photo.analysis = await API.claudeVision(
-        photo.base64,
-        photo.mediaType,
+        base64,
+        mediaType,
         `Analyze this player photo for a King Philip Warriors (KP) high school Instagram post.
 Describe in 2-3 sentences:
 - Sport and action happening
@@ -125,39 +202,46 @@ Be concise. Focus on keeping the same athlete recognizable.`
     const reader = new FileReader();
     reader.onload = async (e) => {
       const dataUrl = e.target.result;
-      this._styleReference = {
+      const ref = {
         dataUrl,
         base64: dataUrl.split(',')[1],
-        mediaType: file.type || 'image/jpeg',
+        mediaType: this._mediaTypeFromDataUrl(dataUrl, file.type || 'image/jpeg'),
         filename: file.name,
         analysis: null,
+        analysisError: null,
         analyzing: true,
       };
+      this._styleReference = ref;
       this._renderStyleReference();
-      await this._analyzeStyleReference();
+      ref._analysisPromise = this._analyzeStyleReference(ref);
+      await ref._analysisPromise;
     };
     reader.readAsDataURL(file);
   },
 
-  async _analyzeStyleReference() {
-    if (!this._styleReference) return;
-    try {
-      this._styleReference.analysis = await API.claudeVision(
-        this._styleReference.base64,
-        this._styleReference.mediaType,
-        `Analyze this social media graphic as a STYLE REFERENCE for a high school sports post.
+  async _analyzeStyleReference(ref = this._styleReference) {
+    if (!ref) return;
+    const prompt = `Analyze this social media graphic for a high school sports Instagram post.
 Describe in 2-3 sentences:
 - Layout and composition (photo placement, text areas, borders)
 - Typography and graphic style (bold headlines, overlays, score graphics)
 - Color grading and mood
-- What design elements to emulate (NOT logos or team branding — layout only)
+- Reusable design patterns to copy (layout and style only)
 
-Be concise. Focus on reusable graphic design patterns.`
-      );
-    } catch {
-      this._styleReference.analysis = null;
+Be concise. Focus on graphic design structure.`;
+
+    try {
+      const { base64, mediaType } = await this._visionPayloadFromDataUrl(ref.dataUrl, ref.mediaType);
+      ref.analysis = await API.claudeVision(base64, mediaType, prompt);
+      ref.analysisError = null;
+    } catch (err) {
+      ref.analysis = null;
+      ref.analysisError = err.message || 'Analysis failed.';
+      if (this._styleReference === ref) {
+        APP.toast(`Style analysis failed: ${ref.analysisError}`, 'error');
+      }
     } finally {
-      this._styleReference.analyzing = false;
+      ref.analyzing = false;
       this._renderStyleReference();
     }
   },
@@ -217,10 +301,16 @@ Be concise. Focus on reusable graphic design patterns.`
     this._updateActionLabels();
     if (!ref) return;
 
-    document.getElementById('img-ref-filename').textContent = ref.filename;
-    document.getElementById('img-ref-thumb').src = ref.dataUrl;
-    document.getElementById('img-ref-analysis-text').textContent =
-      ref.analyzing ? 'Analyzing style reference...' : (ref.analysis || 'Analysis unavailable.');
+    const filenameEl = document.getElementById('img-ref-filename');
+    const thumbEl = document.getElementById('img-ref-thumb');
+    const analysisEl = document.getElementById('img-ref-analysis-text');
+    if (filenameEl) filenameEl.textContent = ref.filename;
+    if (thumbEl) thumbEl.src = ref.dataUrl;
+    if (analysisEl) {
+      analysisEl.textContent = ref.analyzing
+        ? 'Analyzing style reference...'
+        : (ref.analysis || ref.analysisError || 'Analysis unavailable.');
+    }
   },
 
   _combinedAnalysis() {
@@ -271,6 +361,10 @@ Be concise. Focus on reusable graphic design patterns.`
 
   // ── BUILD PROMPT ────────────────────────────────────
   async buildPrompt() {
+    if (this._styleReference?._analysisPromise) {
+      await this._styleReference._analysisPromise;
+    }
+
     const desc   = document.getElementById('img-desc').value.trim();
     const preset = document.querySelector('#img-presets .preset-btn.active')?.dataset.preset || 'gameday';
     const format = document.querySelector('#img-formats .format-btn.active')?.dataset.label || 'Square (IG post)';
@@ -279,7 +373,7 @@ Be concise. Focus on reusable graphic design patterns.`
     const hasRef   = !!this._styleReference;
     const analysis = this._combinedAnalysis();
 
-    if (!desc && !analysis && !this._styleReference?.analysis) {
+    if (!desc && !analysis && !hasRef) {
       APP.toast('Add a description, player photos, or a style reference.', 'error');
       return;
     }
