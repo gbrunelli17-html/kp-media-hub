@@ -321,25 +321,37 @@ Be concise. Focus on graphic design structure.`;
   },
 
   // ── IMAGE PREP ──────────────────────────────────────
-  _blobFromDataUrl(dataUrl, mediaType) {
-    const maxEdge = 2048;
+  _blobFromDataUrl(dataUrl, mediaType, maxEdge = 1024, forceJpeg = true) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
         let { width, height } = img;
         const scale = Math.min(1, maxEdge / Math.max(width, height));
-        width  = Math.round(width * scale);
-        height = Math.round(height * scale);
+        width  = Math.max(1, Math.round(width * scale));
+        height = Math.max(1, Math.round(height * scale));
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
         canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-        const type = mediaType === 'image/png' ? 'image/png' : 'image/jpeg';
-        canvas.toBlob(
-          (blob) => blob ? resolve(blob) : reject(new Error('Could not prepare image.')),
-          type,
-          0.92
-        );
+        const type = forceJpeg ? 'image/jpeg' : (mediaType === 'image/png' ? 'image/png' : 'image/jpeg');
+        const quality = forceJpeg ? 0.82 : 0.92;
+
+        const encode = (q) => {
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) return reject(new Error('Could not prepare image.'));
+              if (blob.size > 4 * 1024 * 1024 && q > 0.5 && forceJpeg) {
+                encode(q - 0.1);
+                return;
+              }
+              resolve(blob);
+            },
+            type,
+            q
+          );
+        };
+
+        encode(quality);
       };
       img.onerror = () => reject(new Error('Could not read image.'));
       img.src = dataUrl;
@@ -354,7 +366,7 @@ Be concise. Focus on graphic design structure.`;
     }
     if (this._styleReference) {
       const blob = await this._blobFromDataUrl(this._styleReference.dataUrl, this._styleReference.mediaType);
-      images.push({ blob, filename: this._styleReference.filename || 'style-reference.png' });
+      images.push({ blob, filename: this._styleReference.filename || 'style-reference.jpg' });
     }
     return images;
   },
@@ -589,7 +601,7 @@ Return ONLY the optimized prompt text. No preamble, no explanation, no labels.`;
       document.getElementById('img-placeholder').querySelector('.img-placeholder-title').textContent =
         hasInputs ? 'Stylizing your post...' : 'Generating your image...';
       document.getElementById('img-placeholder').querySelector('.img-placeholder-sub').textContent =
-        'GPT Image · this takes ~10–20 seconds';
+        hasInputs ? 'GPT Image · stylizing can take 30–90 seconds' : 'GPT Image · this takes ~10–20 seconds';
     } else {
       this._updateActionLabels();
       document.getElementById('img-placeholder').querySelector('.img-placeholder-title').textContent =
