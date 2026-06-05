@@ -63,7 +63,7 @@ const HISTORY = {
             <div class="history-name">${item.title || 'Untitled'}</div>
             <div class="chip chip-${item.mode}">${item.mode}</div>
           </div>
-          <div class="history-info">${item.type === 'image' ? (item.source === 'player-photo' ? 'Stylized player photo' : 'Image prompt') : 'Caption'} · ${date}${item.sourceFile ? ` · ${item.sourceFile}` : ''}${item.assignee ? ` · ${item.assignee}` : ''}</div>
+          <div class="history-info">${this._historyLabel(item)} · ${date}${item.assignee ? ` · ${item.assignee}` : ''}</div>
           <div class="history-preview">${preview}</div>
           <div class="history-actions">
             ${statusChip}
@@ -80,6 +80,18 @@ const HISTORY = {
           </div>
         </div>
       </div>`;
+  },
+
+  _historyLabel(item) {
+    if (item.type !== 'image') return 'Caption';
+    if (item.source === 'player-photo') {
+      const count = item.playerCount > 1 ? ` · ${item.playerCount} photos` : '';
+      const ref   = item.hasStyleReference ? ' · style ref' : '';
+      const files = item.sourceFiles?.length ? ` · ${item.sourceFiles.join(', ')}` : '';
+      return `Stylized player photo${count}${ref}${files}`;
+    }
+    if (item.source === 'style-reference') return 'Style reference post';
+    return 'Image prompt';
   },
 
   _statusChip(status) {

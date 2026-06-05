@@ -1,19 +1,13 @@
 /* ============================================================
    API.JS — all external API calls
    Claude API (captions, vision, prompt optimization)
-   OpenAI API (GPT Image image generation)
+   OpenAI API (GPT Image generation + edits)
    ============================================================ */
 
 const API = {
 
   // ── CLAUDE ──────────────────────────────────────────
 
-  /**
-   * Core Claude call. Returns the assistant's text response.
-   * @param {string} systemPrompt
-   * @param {Array}  messages   - array of {role, content}
-   * @param {number} maxTokens
-   */
   async claude(systemPrompt, messages, maxTokens = 1000) {
     const key = STORAGE.getClaudeKey();
     if (!key) throw new Error('No Claude API key set. Open Settings to add one.');
@@ -43,12 +37,6 @@ const API = {
     return data.content?.[0]?.text || '';
   },
 
-  /**
-   * Claude vision call — pass base64 image data for analysis.
-   * @param {string} base64Data  - base64 encoded image
-   * @param {string} mediaType   - e.g. 'image/jpeg'
-   * @param {string} prompt
-   */
   async claudeVision(base64Data, mediaType, prompt) {
     const key = STORAGE.getClaudeKey();
     if (!key) throw new Error('No Claude API key set.');
@@ -88,12 +76,6 @@ const API = {
 
   // ── OPENAI / GPT IMAGE ──────────────────────────────
 
-  /**
-   * Generate an image with GPT Image.
-   * @param {string} prompt
-   * @param {string} size  - '1024x1024' | '1024x1536' | '1536x1024'
-   * Returns a data URL or remote URL suitable for <img src>.
-   */
   async generateImage(prompt, size = '1024x1024') {
     const key = STORAGE.getOpenAIKey();
     if (!key) throw new Error('No OpenAI API key set. Open Settings to add one.');
@@ -123,16 +105,15 @@ const API = {
   },
 
   /**
-   * Stylize an uploaded player photo with GPT Image edits.
+   * Stylize images with GPT Image edits (player photos + optional style reference).
    * @param {string} prompt
    * @param {string} size
-   * @param {Blob}   imageBlob
-   * @param {string} filename
-   * Returns a data URL or remote URL suitable for <img src>.
+   * @param {Array<{blob: Blob, filename: string}>} images
    */
-  async editImageFromPhoto(prompt, size, imageBlob, filename) {
+  async editImages(prompt, size, images) {
     const key = STORAGE.getOpenAIKey();
     if (!key) throw new Error('No OpenAI API key set. Open Settings to add one.');
+    if (!images?.length) throw new Error('No images to stylize.');
 
     const form = new FormData();
     form.append('model', 'gpt-image-1');
@@ -140,7 +121,9 @@ const API = {
     form.append('size', size);
     form.append('quality', 'high');
     form.append('input_fidelity', 'high');
-    form.append('image', imageBlob, filename || 'player-photo.png');
+    images.forEach(({ blob, filename }) => {
+      form.append('image', blob, filename);
+    });
 
     const res = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
