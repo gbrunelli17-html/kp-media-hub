@@ -14,6 +14,24 @@ const API = {
     return msg;
   },
 
+  _openaiErrorMessage(status, errBody) {
+    const msg = errBody?.error?.message || `OpenAI API error ${status}`;
+    if (status === 401 || /invalid.*api.*key|incorrect api key/i.test(msg)) {
+      return 'OpenAI API key is invalid. Open Settings, paste a fresh key from platform.openai.com, and save.';
+    }
+    return msg;
+  },
+
+  _wrapFetchError(err, context) {
+    const msg = err?.message || String(err);
+    if (err?.name === 'TypeError' || /failed to fetch|networkerror|load failed/i.test(msg)) {
+      return new Error(
+        `${context} could not reach OpenAI. This often happens with large photo uploads or a slow connection. Try fewer/smaller photos and wait 30–60 seconds.`
+      );
+    }
+    return err instanceof Error ? err : new Error(msg);
+  },
+
   // ── CLAUDE ──────────────────────────────────────────
 
   async claude(systemPrompt, messages, maxTokens = 1000) {
@@ -124,24 +142,29 @@ const API = {
     const key = STORAGE.getOpenAIKey();
     if (!key) throw new Error('No OpenAI API key set. Open Settings to add one.');
 
-    const res = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-image-1',
-        prompt,
-        n: 1,
-        size,
-        quality: 'high',
-      }),
-    });
+    let res;
+    try {
+      res = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-image-1',
+          prompt,
+          n: 1,
+          size,
+          quality: 'high',
+        }),
+      });
+    } catch (err) {
+      throw this._wrapFetchError(err, 'Image generation');
+    }
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `OpenAI API error ${res.status}`);
+      throw new Error(this._openaiErrorMessage(res.status, err));
     }
 
     const data = await res.json();
@@ -159,25 +182,42 @@ const API = {
     if (!key) throw new Error('No OpenAI API key set. Open Settings to add one.');
     if (!images?.length) throw new Error('No images to stylize.');
 
+    let totalBytes = 0;
+    for (const { blob } of images) {
+      if (!blob?.size) throw new Error('One of your images could not be prepared. Try re-uploading.');
+      totalBytes += blob.size;
+    }
+    if (totalBytes > 20 * 1024 * 1024) {
+      throw new Error('Upload is too large (~20MB max). Remove some photos or use smaller images.');
+    }
+
     const form = new FormData();
     form.append('model', 'gpt-image-1');
     form.append('prompt', prompt);
     form.append('size', size);
+    form.append('n', '1');
     form.append('quality', 'high');
     form.append('input_fidelity', 'high');
     images.forEach(({ blob, filename }) => {
-      form.append('image', blob, filename);
+      const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
+      const base = (filename || 'image').replace(/\.[^.]+$/, '');
+      form.append('image', blob, `${base}.${ext}`);
     });
 
-    const res = await fetch('https://api.openai.com/v1/images/edits', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${key}` },
-      body: form,
-    });
+    let res;
+    try {
+      res = await fetch('https://api.openai.com/v1/images/edits', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${key}` },
+        body: form,
+      });
+    } catch (err) {
+      throw this._wrapFetchError(err, 'Stylize post');
+    }
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `OpenAI API error ${res.status}`);
+      throw new Error(this._openaiErrorMessage(res.status, err));
     }
 
     const data = await res.json();
