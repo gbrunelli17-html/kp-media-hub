@@ -63,7 +63,7 @@ const HISTORY = {
             <div class="history-name">${item.title || 'Untitled'}</div>
             <div class="chip chip-${item.mode}">${item.mode}</div>
           </div>
-          <div class="history-info">${item.type === 'image' ? 'Image prompt' : 'Caption'} · ${date}${item.assignee ? ` · ${item.assignee}` : ''}</div>
+          <div class="history-info">${item.type === 'image' ? (item.source === 'player-photo' ? 'Stylized player photo' : 'Image prompt') : 'Caption'} · ${date}${item.sourceFile ? ` · ${item.sourceFile}` : ''}${item.assignee ? ` · ${item.assignee}` : ''}</div>
           <div class="history-preview">${preview}</div>
           <div class="history-actions">
             ${statusChip}

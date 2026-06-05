@@ -301,16 +301,18 @@
 
               <div class="card">
                 <div class="card-header">
-                  <span class="card-title"><i class="ti ti-photo-up"></i> Reference photo <span class="card-title-muted">optional context</span></span>
+                  <span class="card-title"><i class="ti ti-photo-up"></i> Player photo</span>
                 </div>
+
+                <p class="field-hint">Upload a game photo to stylize it. Without a photo, the app generates a new image from text only.</p>
 
                 <div id="img-context-zone">
                   <!-- Upload state -->
                   <div id="img-upload-state">
                     <div class="upload-zone" id="img-dropzone" onclick="document.getElementById('img-file-input').click()">
                       <i class="ti ti-cloud-upload"></i>
-                      <div class="upload-title">Drop a photo here</div>
-                      <div class="upload-sub">JPG, PNG — Claude analyzes it to build a better prompt</div>
+                      <div class="upload-title">Drop a player photo here</div>
+                      <div class="upload-sub">JPG, PNG — AI stylizes your photo into a KP post</div>
                     </div>
                     <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="IMAGE_STUDIO.handleUpload(event)" />
                   </div>
@@ -319,10 +321,11 @@
                   <div id="img-analyzed-state" class="hidden">
                     <div class="context-preview">
                       <div class="context-preview-header">
+                        <img id="img-upload-thumb" class="player-photo-thumb hidden" alt="Uploaded player photo" />
                         <i class="ti ti-check-circle"></i>
                         <div>
                           <div class="context-preview-name" id="img-filename">photo.jpg</div>
-                          <div class="context-preview-sub">Claude is analyzing...</div>
+                          <div class="context-preview-sub">Ready to stylize</div>
                         </div>
                         <button class="context-remove" onclick="IMAGE_STUDIO.clearUpload()" title="Remove">
                           <i class="ti ti-x"></i>
@@ -381,11 +384,11 @@
                     <div class="format-thumb fmt-square"></div>
                     <span>Square</span>
                   </button>
-                  <button class="format-btn" data-format="1024x1792" data-label="Portrait (Story/Reel)">
+                  <button class="format-btn" data-format="1024x1536" data-label="Portrait (Story/Reel)">
                     <div class="format-thumb fmt-portrait"></div>
                     <span>Story</span>
                   </button>
-                  <button class="format-btn" data-format="1792x1024" data-label="Landscape (Banner)">
+                  <button class="format-btn" data-format="1536x1024" data-label="Landscape (Banner)">
                     <div class="format-thumb fmt-landscape"></div>
                     <span>Banner</span>
                   </button>
@@ -404,7 +407,7 @@
                 <div id="img-prompt-box" class="prompt-box">
                   <div class="output-placeholder">
                     <i class="ti ti-photo"></i>
-                    <p>Add a description or upload a photo, then build your prompt.</p>
+                    <p>Add a description or upload a player photo, then build your stylize prompt.</p>
                   </div>
                 </div>
 
@@ -419,9 +422,21 @@
                   <div class="img-placeholder" id="img-placeholder">
                     <i class="ti ti-robot"></i>
                     <div class="img-placeholder-title">Generated image appears here</div>
-                    <div class="img-placeholder-sub">DALL·E 3 · ~10 sec per image</div>
+                    <div class="img-placeholder-sub">Upload a game photo to stylize it</div>
                   </div>
-                  <img id="img-result" class="generated-image hidden" alt="Generated image" />
+                  <div id="img-single-view" class="img-single-view hidden">
+                    <img id="img-result" class="generated-image" alt="Generated image" />
+                  </div>
+                  <div id="img-compare-view" class="img-compare-view hidden">
+                    <div class="img-compare-panel">
+                      <div class="img-compare-label">Original</div>
+                      <img id="img-source-thumb" class="img-compare-image" alt="Original player photo" />
+                    </div>
+                    <div class="img-compare-panel">
+                      <div class="img-compare-label">Stylized</div>
+                      <img id="img-result-compare" class="img-compare-image" alt="Stylized post" />
+                    </div>
+                  </div>
                 </div>
 
                 <div class="img-action-row">

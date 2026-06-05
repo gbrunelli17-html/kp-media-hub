@@ -1,7 +1,7 @@
 /* ============================================================
    API.JS — all external API calls
    Claude API (captions, vision, prompt optimization)
-   OpenAI API (DALL·E 3 image generation)
+   OpenAI API (GPT Image image generation)
    ============================================================ */
 
 const API = {
@@ -86,13 +86,13 @@ const API = {
     return data.content?.[0]?.text || '';
   },
 
-  // ── OPENAI / DALL·E 3 ───────────────────────────────
+  // ── OPENAI / GPT IMAGE ──────────────────────────────
 
   /**
-   * Generate an image with DALL·E 3.
+   * Generate an image with GPT Image.
    * @param {string} prompt
-   * @param {string} size  - '1024x1024' | '1024x1792' | '1792x1024'
-   * Returns the image URL.
+   * @param {string} size  - '1024x1024' | '1024x1536' | '1536x1024'
+   * Returns a data URL or remote URL suitable for <img src>.
    */
   async generateImage(prompt, size = '1024x1024') {
     const key = STORAGE.getOpenAIKey();
@@ -105,12 +105,11 @@ const API = {
         'Authorization': `Bearer ${key}`,
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
+        model: 'gpt-image-1',
         prompt,
         n: 1,
         size,
-        quality: 'hd',
-        response_format: 'url',
+        quality: 'high',
       }),
     });
 
@@ -120,6 +119,48 @@ const API = {
     }
 
     const data = await res.json();
-    return data.data?.[0]?.url || null;
+    return this._parseImageResponse(data);
+  },
+
+  /**
+   * Stylize an uploaded player photo with GPT Image edits.
+   * @param {string} prompt
+   * @param {string} size
+   * @param {Blob}   imageBlob
+   * @param {string} filename
+   * Returns a data URL or remote URL suitable for <img src>.
+   */
+  async editImageFromPhoto(prompt, size, imageBlob, filename) {
+    const key = STORAGE.getOpenAIKey();
+    if (!key) throw new Error('No OpenAI API key set. Open Settings to add one.');
+
+    const form = new FormData();
+    form.append('model', 'gpt-image-1');
+    form.append('prompt', prompt);
+    form.append('size', size);
+    form.append('quality', 'high');
+    form.append('input_fidelity', 'high');
+    form.append('image', imageBlob, filename || 'player-photo.png');
+
+    const res = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}` },
+      body: form,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `OpenAI API error ${res.status}`);
+    }
+
+    const data = await res.json();
+    return this._parseImageResponse(data);
+  },
+
+  _parseImageResponse(data) {
+    const item = data.data?.[0];
+    if (item?.b64_json) return `data:image/png;base64,${item.b64_json}`;
+    if (item?.url) return item.url;
+    return null;
   },
 };

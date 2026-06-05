@@ -508,6 +508,17 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
 }
 .analysis-text { font-size: 12px; color: #a08020; line-height: 1.5; }
 
+.field-hint {
+  font-size: 11px; color: var(--text-muted);
+  line-height: 1.5; margin-bottom: 10px;
+}
+
+.player-photo-thumb {
+  width: 44px; height: 44px; border-radius: var(--radius-sm);
+  object-fit: cover; border: 1px solid var(--gold-border); flex-shrink: 0;
+}
+.player-photo-thumb.hidden { display: none; }
+
 .preset-grid {
   display: grid; grid-template-columns: repeat(3, 1fr);
   gap: 6px; margin-bottom: 0;
@@ -565,13 +576,36 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
   flex: 1; background: var(--bg-input);
   border: 1px solid var(--border); border-radius: var(--radius-md);
   display: flex; align-items: center; justify-content: center;
-  min-height: 200px; overflow: hidden;
+  min-height: 200px; overflow: hidden; position: relative;
 }
 .img-placeholder { text-align: center; }
 .img-placeholder i { font-size: 28px; color: var(--text-hint); display: block; margin-bottom: 8px; }
 .img-placeholder-title { font-size: 13px; font-weight: 600; color: var(--text-hint); }
 .img-placeholder-sub { font-size: 11px; color: var(--text-hint); margin-top: 4px; }
+.img-single-view {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+.img-single-view.hidden { display: none; }
 .generated-image { width: 100%; height: 100%; object-fit: contain; border-radius: var(--radius-md); }
+.img-compare-view {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  width: 100%; height: 100%; padding: 8px;
+}
+.img-compare-view.hidden { display: none; }
+.img-compare-panel {
+  display: flex; flex-direction: column; gap: 6px;
+  min-height: 0; overflow: hidden;
+}
+.img-compare-label {
+  font-size: 9px; font-weight: 800; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.img-compare-image {
+  width: 100%; flex: 1; min-height: 0;
+  object-fit: contain; border-radius: var(--radius-sm);
+  background: var(--bg-base); border: 1px solid var(--border);
+}
 
 .img-action-row { display: flex; gap: 8px; }
 .img-action-row .primary-btn, .img-action-row .secondary-btn { flex: 1; }
