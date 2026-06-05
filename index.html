@@ -31,7 +31,7 @@
         <input id="ob-claude-key" type="password" class="ob-input" placeholder="sk-ant-..." autocomplete="off" />
       </div>
       <div class="ob-field">
-        <label class="ob-label">OpenAI API key <span class="ob-hint">platform.openai.com — for DALL·E 3</span></label>
+        <label class="ob-label">OpenAI API key <span class="ob-hint">platform.openai.com — for GPT Image</span></label>
         <input id="ob-openai-key" type="password" class="ob-input" placeholder="sk-..." autocomplete="off" />
       </div>
 
@@ -155,8 +155,8 @@
             <button class="quick-card" onclick="APP.navigate('image')">
               <div class="quick-icon qc-gold"><i class="ti ti-photo"></i></div>
               <div class="quick-text">
-                <div class="quick-title">Generate image</div>
-                <div class="quick-sub">Upload photo for context</div>
+                <div class="quick-title">Stylize player photos</div>
+                <div class="quick-sub">Match pro post style</div>
               </div>
               <i class="ti ti-arrow-right quick-arrow"></i>
             </button>
@@ -301,47 +301,65 @@
 
               <div class="card">
                 <div class="card-header">
-                  <span class="card-title"><i class="ti ti-photo-up"></i> Player photo</span>
+                  <span class="card-title"><i class="ti ti-photo-up"></i> Player photos</span>
+                  <span class="card-title-muted" id="img-player-count">0 / 8</span>
                 </div>
 
-                <p class="field-hint">Upload a game photo to stylize it. Without a photo, the app generates a new image from text only.</p>
+                <p class="field-hint">Drag or click to add player photos. Without photos, the app generates a new image from text only.</p>
 
-                <div id="img-context-zone">
-                  <!-- Upload state -->
-                  <div id="img-upload-state">
-                    <div class="upload-zone" id="img-dropzone" onclick="document.getElementById('img-file-input').click()">
-                      <i class="ti ti-cloud-upload"></i>
-                      <div class="upload-title">Drop a player photo here</div>
-                      <div class="upload-sub">JPG, PNG — AI stylizes your photo into a KP post</div>
-                    </div>
-                    <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="IMAGE_STUDIO.handleUpload(event)" />
+                <div id="img-upload-zone">
+                  <div class="upload-zone" id="img-dropzone" onclick="document.getElementById('img-file-input').click()">
+                    <i class="ti ti-cloud-upload"></i>
+                    <div class="upload-title">Drop player photos here</div>
+                    <div class="upload-sub">JPG, PNG — up to 8 photos</div>
                   </div>
+                  <input type="file" id="img-file-input" accept="image/*" multiple style="display:none" />
 
-                  <!-- Uploaded + analyzed state (hidden until file uploaded) -->
-                  <div id="img-analyzed-state" class="hidden">
-                    <div class="context-preview">
-                      <div class="context-preview-header">
-                        <img id="img-upload-thumb" class="player-photo-thumb hidden" alt="Uploaded player photo" />
-                        <i class="ti ti-check-circle"></i>
-                        <div>
-                          <div class="context-preview-name" id="img-filename">photo.jpg</div>
-                          <div class="context-preview-sub">Ready to stylize</div>
-                        </div>
-                        <button class="context-remove" onclick="IMAGE_STUDIO.clearUpload()" title="Remove">
-                          <i class="ti ti-x"></i>
-                        </button>
-                      </div>
-                      <div class="context-analysis" id="img-analysis">
-                        <div class="analysis-label">Analysis</div>
-                        <div class="analysis-text" id="img-analysis-text">Analyzing your photo...</div>
-                      </div>
-                    </div>
-                  </div>
+                  <div id="img-player-grid" class="photo-thumb-grid hidden"></div>
+
+                  <button class="text-btn hidden" id="img-clear-players" onclick="IMAGE_STUDIO.clearAllPlayers()">
+                    <i class="ti ti-trash"></i> Clear all player photos
+                  </button>
                 </div>
 
                 <div class="field-group" style="margin-top: 12px">
                   <label class="field-label">Describe what you want</label>
                   <textarea id="img-desc" class="field-textarea" placeholder="e.g. A dramatic action shot of a KP football player scoring, stadium lights, warrior energy..." rows="3"></textarea>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title"><i class="ti ti-layout"></i> Style reference <span class="card-title-muted">optional</span></span>
+                </div>
+
+                <p class="field-hint">Upload a screenshot from NFL, MLB, ESPN, etc. to match layout and graphic style (not logos).</p>
+
+                <div id="img-ref-zone">
+                  <div class="upload-zone upload-zone-ref" id="img-ref-dropzone" onclick="document.getElementById('img-ref-file-input').click()">
+                    <i class="ti ti-brand-instagram"></i>
+                    <div class="upload-title">Drop a reference post here</div>
+                    <div class="upload-sub">Pro sports account screenshot</div>
+                  </div>
+                  <input type="file" id="img-ref-file-input" accept="image/*" style="display:none" />
+
+                  <div id="img-ref-preview" class="context-preview hidden">
+                    <div class="context-preview-header">
+                      <img id="img-ref-thumb" class="player-photo-thumb" alt="Style reference" />
+                      <i class="ti ti-check-circle"></i>
+                      <div>
+                        <div class="context-preview-name" id="img-ref-filename">reference.jpg</div>
+                        <div class="context-preview-sub">Style reference loaded</div>
+                      </div>
+                      <button class="context-remove" onclick="IMAGE_STUDIO.clearStyleReference()" title="Remove">
+                        <i class="ti ti-x"></i>
+                      </button>
+                    </div>
+                    <div class="context-analysis">
+                      <div class="analysis-label">Style analysis</div>
+                      <div class="analysis-text" id="img-ref-analysis-text">Analyzing...</div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -413,7 +431,7 @@
 
                 <div class="prompt-platform-row" id="img-platform-row">
                   <span class="platform-label">Copy for:</span>
-                  <button class="platform-btn" onclick="IMAGE_STUDIO.copyPrompt('dalle')">DALL·E 3</button>
+                  <button class="platform-btn" onclick="IMAGE_STUDIO.copyPrompt('gptimage')">GPT Image</button>
                   <button class="platform-btn" onclick="IMAGE_STUDIO.copyPrompt('midjourney')">Midjourney v6</button>
                   <button class="platform-btn" onclick="IMAGE_STUDIO.copyPrompt('firefly')">Adobe Firefly</button>
                 </div>
@@ -429,8 +447,8 @@
                   </div>
                   <div id="img-compare-view" class="img-compare-view hidden">
                     <div class="img-compare-panel">
-                      <div class="img-compare-label">Original</div>
-                      <img id="img-source-thumb" class="img-compare-image" alt="Original player photo" />
+                      <div class="img-compare-label">Sources</div>
+                      <div id="img-source-strip" class="img-source-strip"></div>
                     </div>
                     <div class="img-compare-panel">
                       <div class="img-compare-label">Stylized</div>

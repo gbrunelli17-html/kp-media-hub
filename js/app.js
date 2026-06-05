@@ -60,6 +60,8 @@ const APP = {
       });
     });
 
+    if (typeof IMAGE_STUDIO !== 'undefined') IMAGE_STUDIO.initDropZones();
+
     this.navigate('dashboard');
   },
 

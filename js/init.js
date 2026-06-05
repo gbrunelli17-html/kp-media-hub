@@ -6,9 +6,6 @@
 
 (function () {
 
-  // Copy KP logo from uploads into assets folder path reference
-  // (The logo img tag uses assets/kp-logo.png — place your logo there)
-
   if (STORAGE.isOnboarded() && STORAGE.hasKeys()) {
     // Keys exist — go straight to app
     document.getElementById('onboarding').classList.add('hidden');
