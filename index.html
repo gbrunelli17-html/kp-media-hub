@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KP Media Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+
+  <!-- ============================================================
+       ONBOARDING OVERLAY — shown once on first load
+       Saves keys to localStorage, never shown again
+  ============================================================ -->
+  <div id="onboarding" class="onboarding hidden">
+    <div class="ob-card">
+      <div class="ob-logo">
+        <img src="assets/kp-logo.png" alt="KP Warriors" onerror="this.style.display='none';document.getElementById('ob-logo-fallback').style.display='flex'" />
+        <div id="ob-logo-fallback" class="logo-fallback" style="display:none">KP</div>
+      </div>
+      <div class="ob-eyebrow">King Philip Regional</div>
+      <h1 class="ob-title">KP Media Hub</h1>
+      <p class="ob-sub">Enter your API keys to get started. These are saved to your browser only — never sent anywhere else.</p>
+
+      <div class="ob-field">
+        <label class="ob-label">Claude API key <span class="ob-hint">console.anthropic.com</span></label>
+        <input id="ob-claude-key" type="password" class="ob-input" placeholder="sk-ant-..." autocomplete="off" />
+      </div>
+      <div class="ob-field">
+        <label class="ob-label">OpenAI API key <span class="ob-hint">platform.openai.com — for DALL·E 3</span></label>
+        <input id="ob-openai-key" type="password" class="ob-input" placeholder="sk-..." autocomplete="off" />
+      </div>
+
+      <button class="ob-btn" onclick="APP.saveKeys()">
+        <i class="ti ti-arrow-right"></i> Enter the hub
+      </button>
+      <p class="ob-legal">Keys stored in localStorage. Clear your browser data to remove them.</p>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MAIN APP SHELL
+  ============================================================ -->
+  <div id="app" class="app-shell hidden">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sb-top">
+        <div class="sb-logo-wrap" title="KP Warriors">
+          <img src="assets/kp-logo.png" alt="KP Warriors" class="sb-logo" onerror="this.style.display='none';document.getElementById('sb-fallback').style.display='flex'" />
+          <div id="sb-fallback" class="logo-fallback sb-logo-fallback" style="display:none">KP</div>
+        </div>
+        <div class="sb-divider"></div>
+        <nav class="sb-nav">
+          <button class="sb-btn active" data-screen="dashboard" title="Dashboard">
+            <i class="ti ti-layout-dashboard"></i>
+            <span class="sb-label">Home</span>
+          </button>
+          <button class="sb-btn" data-screen="caption" title="Caption Studio">
+            <i class="ti ti-writing"></i>
+            <span class="sb-label">Captions</span>
+          </button>
+          <button class="sb-btn" data-screen="image" title="Image Studio">
+            <i class="ti ti-photo"></i>
+            <span class="sb-label">Images</span>
+          </button>
+          <div class="sb-divider"></div>
+          <button class="sb-btn" data-screen="calendar" title="Content Calendar">
+            <i class="ti ti-calendar"></i>
+            <span class="sb-label">Calendar</span>
+          </button>
+          <button class="sb-btn" data-screen="history" title="Post History">
+            <i class="ti ti-history"></i>
+            <span class="sb-label">History</span>
+          </button>
+        </nav>
+      </div>
+      <div class="sb-bottom">
+        <button class="sb-btn" onclick="APP.openSettings()" title="Settings">
+          <i class="ti ti-settings"></i>
+          <span class="sb-label">Settings</span>
+        </button>
+        <div class="sb-avatar" title="Signed in">
+          <span id="sb-initials">GB</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-area">
+
+      <!-- TOP BAR -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-eyebrow" id="topbar-eyebrow">Dashboard</div>
+          <h1 class="topbar-title" id="topbar-title">Good afternoon, Gio</h1>
+        </div>
+        <div class="topbar-right">
+          <!-- MODE TOGGLE -->
+          <div class="mode-toggle" id="mode-toggle">
+            <button class="mode-btn mode-sports active" data-mode="sports" onclick="APP.setMode('sports')">
+              <i class="ti ti-ball-football"></i> Sports
+            </button>
+            <button class="mode-btn mode-school" data-mode="school" onclick="APP.setMode('school')">
+              <i class="ti ti-school"></i> School
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- SCREENS CONTAINER -->
+      <main class="screens">
+
+        <!-- ======================================================
+             SCREEN: DASHBOARD
+        ====================================================== -->
+        <section class="screen active" id="screen-dashboard">
+
+          <div class="stats-row">
+            <div class="stat-card">
+              <div class="stat-label">This month</div>
+              <div class="stat-value" id="stat-posts">—</div>
+              <div class="stat-sub">posts published</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Drafts</div>
+              <div class="stat-value" id="stat-drafts">—</div>
+              <div class="stat-sub">ready to review</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Scheduled</div>
+              <div class="stat-value" id="stat-scheduled">—</div>
+              <div class="stat-sub">upcoming posts</div>
+            </div>
+            <div class="stat-card stat-card-accent">
+              <div class="stat-label">Mode</div>
+              <div class="stat-value" id="stat-mode">Sports</div>
+              <div class="stat-sub" id="stat-mode-sub">game-day energy</div>
+            </div>
+          </div>
+
+          <div class="quick-grid">
+            <button class="quick-card" onclick="APP.navigate('caption')">
+              <div class="quick-icon qc-green"><i class="ti ti-writing"></i></div>
+              <div class="quick-text">
+                <div class="quick-title">Write a caption</div>
+                <div class="quick-sub">AI-powered · 3 variants</div>
+              </div>
+              <i class="ti ti-arrow-right quick-arrow"></i>
+            </button>
+            <button class="quick-card" onclick="APP.navigate('image')">
+              <div class="quick-icon qc-gold"><i class="ti ti-photo"></i></div>
+              <div class="quick-text">
+                <div class="quick-title">Generate image</div>
+                <div class="quick-sub">Upload photo for context</div>
+              </div>
+              <i class="ti ti-arrow-right quick-arrow"></i>
+            </button>
+            <button class="quick-card" onclick="APP.navigate('calendar')">
+              <div class="quick-icon qc-green"><i class="ti ti-calendar-plus"></i></div>
+              <div class="quick-text">
+                <div class="quick-title">Plan a post</div>
+                <div class="quick-sub">Add to content calendar</div>
+              </div>
+              <i class="ti ti-arrow-right quick-arrow"></i>
+            </button>
+            <button class="quick-card" onclick="APP.navigate('history')">
+              <div class="quick-icon qc-gold"><i class="ti ti-archive"></i></div>
+              <div class="quick-text">
+                <div class="quick-title">View drafts</div>
+                <div class="quick-sub" id="qc-draft-count">— saved items</div>
+              </div>
+              <i class="ti ti-arrow-right quick-arrow"></i>
+            </button>
+          </div>
+
+          <div class="card" id="upcoming-card">
+            <div class="card-header">
+              <span class="card-title">Upcoming posts</span>
+              <button class="card-action" onclick="APP.navigate('calendar')">View calendar <i class="ti ti-arrow-right"></i></button>
+            </div>
+            <div id="upcoming-list" class="upcoming-list">
+              <div class="empty-state">
+                <i class="ti ti-calendar-off"></i>
+                <p>No upcoming posts yet.</p>
+                <button onclick="APP.navigate('calendar')">Add your first post</button>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ======================================================
+             SCREEN: CAPTION STUDIO
+        ====================================================== -->
+        <section class="screen" id="screen-caption">
+          <div class="two-col">
+
+            <!-- LEFT: INPUT FORM -->
+            <div class="col">
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title"><i class="ti ti-forms"></i> Post details</span>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label">Event name</label>
+                  <input id="cap-event" type="text" class="field-input" placeholder="e.g. KP vs Franklin — rivalry game" />
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label">Sport / post type</label>
+                  <select id="cap-type" class="field-select">
+                    <optgroup label="Sports">
+                      <option value="football">Football</option>
+                      <option value="baseball">Baseball</option>
+                      <option value="basketball">Basketball</option>
+                      <option value="soccer">Soccer</option>
+                      <option value="track">Track &amp; Field</option>
+                      <option value="volleyball">Volleyball</option>
+                      <option value="lacrosse">Lacrosse</option>
+                    </optgroup>
+                    <optgroup label="School">
+                      <option value="event">School event</option>
+                      <option value="club">Club spotlight</option>
+                      <option value="announcement">Announcement</option>
+                      <option value="nhs">NHS / Honor Society</option>
+                      <option value="college">College / Senior</option>
+                    </optgroup>
+                  </select>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label">Extra context <span class="field-optional">optional</span></label>
+                  <textarea id="cap-context" class="field-textarea" placeholder="Score, player names, key moments, theme..." rows="3"></textarea>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label">Vibe</label>
+                  <div class="vibe-pills" id="vibe-pills">
+                    <button class="vibe-pill active" data-vibe="hype">Hype</button>
+                    <button class="vibe-pill" data-vibe="celebratory">Celebratory</button>
+                    <button class="vibe-pill" data-vibe="informational">Informational</button>
+                    <button class="vibe-pill" data-vibe="serious">Serious</button>
+                    <button class="vibe-pill" data-vibe="recap">Recap</button>
+                  </div>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label">Tone <span class="field-hint" id="tone-readout">78% hype</span></label>
+                  <div class="slider-row">
+                    <span class="slider-label">Formal</span>
+                    <input type="range" id="cap-tone" class="slider" min="0" max="100" value="78" step="1" />
+                    <span class="slider-label">Hype</span>
+                  </div>
+                </div>
+
+                <button class="primary-btn" id="cap-generate-btn" onclick="CAPTIONS.generate()">
+                  <i class="ti ti-stars"></i>
+                  <span>Generate captions</span>
+                  <div class="btn-spinner hidden" id="cap-spinner"></div>
+                </button>
+              </div>
+            </div>
+
+            <!-- RIGHT: OUTPUT -->
+            <div class="col">
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title"><i class="ti ti-sparkles"></i> Generated captions</span>
+                  <button class="card-action hidden" id="cap-regen-btn" onclick="CAPTIONS.generate()">
+                    <i class="ti ti-refresh"></i> Regenerate
+                  </button>
+                </div>
+
+                <div id="cap-output" class="cap-output">
+                  <div class="output-placeholder">
+                    <i class="ti ti-writing"></i>
+                    <p>Fill in the details and hit generate.</p>
+                    <p class="output-placeholder-sub">You'll get 3 caption variants — short, medium, and long — tuned to your vibe.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ======================================================
+             SCREEN: IMAGE STUDIO
+        ====================================================== -->
+        <section class="screen" id="screen-image">
+          <div class="two-col">
+
+            <!-- LEFT: CONTROLS -->
+            <div class="col col-stack">
+
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title"><i class="ti ti-photo-up"></i> Reference photo <span class="card-title-muted">optional context</span></span>
+                </div>
+
+                <div id="img-context-zone">
+                  <!-- Upload state -->
+                  <div id="img-upload-state">
+                    <div class="upload-zone" id="img-dropzone" onclick="document.getElementById('img-file-input').click()">
+                      <i class="ti ti-cloud-upload"></i>
+                      <div class="upload-title">Drop a photo here</div>
+                      <div class="upload-sub">JPG, PNG — Claude analyzes it to build a better prompt</div>
+                    </div>
+                    <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="IMAGE_STUDIO.handleUpload(event)" />
+                  </div>
+
+                  <!-- Uploaded + analyzed state (hidden until file uploaded) -->
+                  <div id="img-analyzed-state" class="hidden">
+                    <div class="context-preview">
+                      <div class="context-preview-header">
+                        <i class="ti ti-check-circle"></i>
+                        <div>
+                          <div class="context-preview-name" id="img-filename">photo.jpg</div>
+                          <div class="context-preview-sub">Claude is analyzing...</div>
+                        </div>
+                        <button class="context-remove" onclick="IMAGE_STUDIO.clearUpload()" title="Remove">
+                          <i class="ti ti-x"></i>
+                        </button>
+                      </div>
+                      <div class="context-analysis" id="img-analysis">
+                        <div class="analysis-label">Analysis</div>
+                        <div class="analysis-text" id="img-analysis-text">Analyzing your photo...</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field-group" style="margin-top: 12px">
+                  <label class="field-label">Describe what you want</label>
+                  <textarea id="img-desc" class="field-textarea" placeholder="e.g. A dramatic action shot of a KP football player scoring, stadium lights, warrior energy..." rows="3"></textarea>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title"><i class="ti ti-palette"></i> Style preset</span>
+                </div>
+                <div class="preset-grid" id="img-presets">
+                  <button class="preset-btn active" data-preset="gameday">
+                    <i class="ti ti-bolt"></i>
+                    <span>Game day</span>
+                  </button>
+                  <button class="preset-btn" data-preset="playoff">
+                    <i class="ti ti-trophy"></i>
+                    <span>Playoff</span>
+                  </button>
+                  <button class="preset-btn" data-preset="seniornght">
+                    <i class="ti ti-star"></i>
+                    <span>Senior night</span>
+                  </button>
+                  <button class="preset-btn" data-preset="poster">
+                    <i class="ti ti-layout"></i>
+                    <span>Clean poster</span>
+                  </button>
+                  <button class="preset-btn" data-preset="celebration">
+                    <i class="ti ti-confetti"></i>
+                    <span>Celebration</span>
+                  </button>
+                  <button class="preset-btn" data-preset="school">
+                    <i class="ti ti-school"></i>
+                    <span>School event</span>
+                  </button>
+                </div>
+
+                <div class="card-header" style="margin-top: 8px">
+                  <span class="card-title"><i class="ti ti-crop"></i> Format</span>
+                </div>
+                <div class="format-row" id="img-formats">
+                  <button class="format-btn active" data-format="1024x1024" data-label="Square (IG post)">
+                    <div class="format-thumb fmt-square"></div>
+                    <span>Square</span>
+                  </button>
+                  <button class="format-btn" data-format="1024x1792" data-label="Portrait (Story/Reel)">
+                    <div class="format-thumb fmt-portrait"></div>
+                    <span>Story</span>
+                  </button>
+                  <button class="format-btn" data-format="1792x1024" data-label="Landscape (Banner)">
+                    <div class="format-thumb fmt-landscape"></div>
+                    <span>Banner</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- RIGHT: OUTPUT -->
+            <div class="col">
+              <div class="card card-tall">
+                <div class="card-header">
+                  <span class="card-title"><i class="ti ti-wand"></i> Optimized prompt</span>
+                </div>
+
+                <div id="img-prompt-box" class="prompt-box">
+                  <div class="output-placeholder">
+                    <i class="ti ti-photo"></i>
+                    <p>Add a description or upload a photo, then build your prompt.</p>
+                  </div>
+                </div>
+
+                <div class="prompt-platform-row" id="img-platform-row">
+                  <span class="platform-label">Copy for:</span>
+                  <button class="platform-btn" onclick="IMAGE_STUDIO.copyPrompt('dalle')">DALL·E 3</button>
+                  <button class="platform-btn" onclick="IMAGE_STUDIO.copyPrompt('midjourney')">Midjourney v6</button>
+                  <button class="platform-btn" onclick="IMAGE_STUDIO.copyPrompt('firefly')">Adobe Firefly</button>
+                </div>
+
+                <div class="img-preview-area" id="img-preview-area">
+                  <div class="img-placeholder" id="img-placeholder">
+                    <i class="ti ti-robot"></i>
+                    <div class="img-placeholder-title">Generated image appears here</div>
+                    <div class="img-placeholder-sub">DALL·E 3 · ~10 sec per image</div>
+                  </div>
+                  <img id="img-result" class="generated-image hidden" alt="Generated image" />
+                </div>
+
+                <div class="img-action-row">
+                  <button class="primary-btn" id="img-build-btn" onclick="IMAGE_STUDIO.buildPrompt()">
+                    <i class="ti ti-wand"></i>
+                    <span>Build prompt</span>
+                    <div class="btn-spinner hidden" id="img-build-spinner"></div>
+                  </button>
+                  <button class="secondary-btn" id="img-generate-btn" onclick="IMAGE_STUDIO.generate()">
+                    <i class="ti ti-photo-plus"></i>
+                    <span>Generate image</span>
+                    <div class="btn-spinner hidden" id="img-gen-spinner"></div>
+                  </button>
+                </div>
+
+                <div id="img-download-row" class="img-download-row hidden">
+                  <button class="download-btn" onclick="IMAGE_STUDIO.download()">
+                    <i class="ti ti-download"></i> Download image
+                  </button>
+                  <button class="secondary-btn" onclick="IMAGE_STUDIO.saveToHistory()">
+                    <i class="ti ti-bookmark"></i> Save to history
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ======================================================
+             SCREEN: CALENDAR
+        ====================================================== -->
+        <section class="screen" id="screen-calendar">
+          <div class="card">
+            <div class="cal-header">
+              <div class="cal-nav">
+                <button class="cal-nav-btn" onclick="CALENDAR.prev()"><i class="ti ti-chevron-left"></i></button>
+                <div class="cal-month-label" id="cal-month-label">June 2026</div>
+                <button class="cal-nav-btn" onclick="CALENDAR.next()"><i class="ti ti-chevron-right"></i></button>
+              </div>
+              <div class="cal-controls">
+                <div class="cal-legend">
+                  <span class="legend-item"><span class="legend-dot dot-sports"></span>Sports</span>
+                  <span class="legend-item"><span class="legend-dot dot-school"></span>School</span>
+                </div>
+                <button class="primary-btn btn-sm" onclick="CALENDAR.openAddModal()">
+                  <i class="ti ti-plus"></i> Add post
+                </button>
+              </div>
+            </div>
+
+            <div class="cal-grid-header">
+              <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+            </div>
+            <div class="cal-grid" id="cal-grid"></div>
+          </div>
+
+          <!-- ADD POST MODAL -->
+          <div id="cal-modal" class="modal-overlay hidden">
+            <div class="modal">
+              <div class="modal-header">
+                <h2 class="modal-title">Add post</h2>
+                <button class="modal-close" onclick="CALENDAR.closeModal()"><i class="ti ti-x"></i></button>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Title</label>
+                <input id="cal-modal-title" type="text" class="field-input" placeholder="Post title..." />
+              </div>
+              <div class="field-group">
+                <label class="field-label">Date</label>
+                <input id="cal-modal-date" type="date" class="field-input" />
+              </div>
+              <div class="field-group">
+                <label class="field-label">Mode</label>
+                <select id="cal-modal-mode" class="field-select">
+                  <option value="sports">Sports</option>
+                  <option value="school">School</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Assigned to</label>
+                <input id="cal-modal-assignee" type="text" class="field-input" placeholder="Team member name..." />
+              </div>
+              <div class="field-group">
+                <label class="field-label">Status</label>
+                <select id="cal-modal-status" class="field-select">
+                  <option value="idea">Idea</option>
+                  <option value="draft">Draft</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="posted">Posted</option>
+                </select>
+              </div>
+              <div class="modal-footer">
+                <button class="secondary-btn" onclick="CALENDAR.closeModal()">Cancel</button>
+                <button class="primary-btn" onclick="CALENDAR.saveEntry()">
+                  <i class="ti ti-check"></i> Save post
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ======================================================
+             SCREEN: POST HISTORY
+        ====================================================== -->
+        <section class="screen" id="screen-history">
+
+          <div class="history-controls">
+            <div class="search-bar">
+              <i class="ti ti-search"></i>
+              <input id="history-search" type="text" placeholder="Search posts, captions, drafts..." oninput="HISTORY.search(this.value)" />
+            </div>
+            <div class="filter-chips" id="history-filters">
+              <button class="filter-chip active" data-filter="all" onclick="HISTORY.filter('all')">All</button>
+              <button class="filter-chip" data-filter="sports" onclick="HISTORY.filter('sports')">Sports</button>
+              <button class="filter-chip" data-filter="school" onclick="HISTORY.filter('school')">School</button>
+              <button class="filter-chip" data-filter="caption" onclick="HISTORY.filter('caption')">Captions</button>
+              <button class="filter-chip" data-filter="image" onclick="HISTORY.filter('image')">Images</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div id="history-list" class="history-list">
+              <div class="empty-state">
+                <i class="ti ti-history"></i>
+                <p>No saved posts yet.</p>
+                <p class="output-placeholder-sub">Captions and images you save will appear here.</p>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+      </main>
+    </div>
+
+    <!-- ============================================================
+         SETTINGS PANEL (slide-in)
+    ============================================================ -->
+    <div id="settings-overlay" class="settings-overlay hidden" onclick="APP.closeSettings()"></div>
+    <div id="settings-panel" class="settings-panel hidden">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button onclick="APP.closeSettings()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">API Keys</div>
+        <div class="field-group">
+          <label class="field-label">Claude API key</label>
+          <input id="settings-claude-key" type="password" class="field-input" placeholder="sk-ant-..." />
+        </div>
+        <div class="field-group">
+          <label class="field-label">OpenAI API key</label>
+          <input id="settings-openai-key" type="password" class="field-input" placeholder="sk-..." />
+        </div>
+        <button class="primary-btn" onclick="APP.updateKeys()">
+          <i class="ti ti-check"></i> Save keys
+        </button>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">Team</div>
+        <div class="field-group">
+          <label class="field-label">Your name</label>
+          <input id="settings-name" type="text" class="field-input" placeholder="e.g. Gio B." />
+        </div>
+        <button class="secondary-btn" onclick="APP.saveName()">Save name</button>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">Data</div>
+        <button class="danger-btn" onclick="APP.clearData()">Clear all saved data</button>
+      </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="toast hidden"></div>
+
+  </div>
+
+  <!-- ============================================================
+       SCRIPTS — load in order
+  ============================================================ -->
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/captions.js"></script>
+  <script src="js/image-studio.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/init.js"></script>
+
+</body>
+</html>
