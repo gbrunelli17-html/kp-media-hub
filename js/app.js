@@ -162,8 +162,24 @@ const APP = {
   updateKeys() {
     const claudeKey = document.getElementById('settings-claude-key').value.trim();
     const openaiKey = document.getElementById('settings-openai-key').value.trim();
-    if (claudeKey) STORAGE.setClaudeKey(claudeKey);
-    if (openaiKey) STORAGE.setOpenAIKey(openaiKey);
+    if (claudeKey) {
+      if (!claudeKey.startsWith('sk-ant-')) {
+        APP.toast('Claude key should start with sk-ant-', 'error');
+        return;
+      }
+      STORAGE.setClaudeKey(claudeKey);
+    }
+    if (openaiKey) {
+      if (!openaiKey.startsWith('sk-')) {
+        APP.toast('OpenAI key should start with sk-', 'error');
+        return;
+      }
+      STORAGE.setOpenAIKey(openaiKey);
+    }
+    if (!claudeKey && !openaiKey) {
+      APP.toast('Enter at least one API key to update.', 'error');
+      return;
+    }
     APP.toast('Keys saved.', 'success');
     this.closeSettings();
   },

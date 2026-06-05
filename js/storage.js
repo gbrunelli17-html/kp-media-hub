@@ -17,10 +17,14 @@ const STORAGE = {
   },
 
   // ── API KEYS ────────────────────────────────────────
-  getClaudeKey()  { return localStorage.getItem(this.KEYS.CLAUDE_KEY) || ''; },
-  getOpenAIKey()  { return localStorage.getItem(this.KEYS.OPENAI_KEY) || ''; },
-  setClaudeKey(k) { localStorage.setItem(this.KEYS.CLAUDE_KEY, k); },
-  setOpenAIKey(k) { localStorage.setItem(this.KEYS.OPENAI_KEY, k); },
+  _cleanKey(key) {
+    return (key || '').trim().replace(/\s+/g, '');
+  },
+
+  getClaudeKey()  { return this._cleanKey(localStorage.getItem(this.KEYS.CLAUDE_KEY)); },
+  getOpenAIKey()  { return this._cleanKey(localStorage.getItem(this.KEYS.OPENAI_KEY)); },
+  setClaudeKey(k) { localStorage.setItem(this.KEYS.CLAUDE_KEY, this._cleanKey(k)); },
+  setOpenAIKey(k) { localStorage.setItem(this.KEYS.OPENAI_KEY, this._cleanKey(k)); },
   hasKeys() { return !!(this.getClaudeKey() && this.getOpenAIKey()); },
 
   // ── USER ────────────────────────────────────────────
