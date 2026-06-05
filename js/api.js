@@ -6,6 +6,14 @@
 
 const API = {
 
+  _claudeErrorMessage(status, errBody) {
+    const msg = errBody?.error?.message || `Claude API error ${status}`;
+    if (status === 401 || /authentication|invalid.*credentials|invalid x-api-key/i.test(msg)) {
+      return 'Claude API key is invalid. Open Settings, paste a fresh key from console.anthropic.com, and save.';
+    }
+    return msg;
+  },
+
   // ── CLAUDE ──────────────────────────────────────────
 
   async claude(systemPrompt, messages, maxTokens = 1000) {
@@ -30,7 +38,7 @@ const API = {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Claude API error ${res.status}`);
+      throw new Error(this._claudeErrorMessage(res.status, err));
     }
 
     const data = await res.json();
@@ -96,7 +104,7 @@ const API = {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Claude Vision error ${res.status}`);
+      throw new Error(this._claudeErrorMessage(res.status, err));
     }
 
     const data = await res.json();
