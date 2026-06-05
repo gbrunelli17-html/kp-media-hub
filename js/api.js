@@ -119,6 +119,45 @@ const API = {
     }
 
     const data = await res.json();
+    return this._parseImageResponse(data);
+  },
+
+  /**
+   * Stylize an uploaded player photo with GPT Image edits.
+   * @param {string} prompt
+   * @param {string} size
+   * @param {Blob}   imageBlob
+   * @param {string} filename
+   * Returns a data URL or remote URL suitable for <img src>.
+   */
+  async editImageFromPhoto(prompt, size, imageBlob, filename) {
+    const key = STORAGE.getOpenAIKey();
+    if (!key) throw new Error('No OpenAI API key set. Open Settings to add one.');
+
+    const form = new FormData();
+    form.append('model', 'gpt-image-1');
+    form.append('prompt', prompt);
+    form.append('size', size);
+    form.append('quality', 'high');
+    form.append('input_fidelity', 'high');
+    form.append('image', imageBlob, filename || 'player-photo.png');
+
+    const res = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}` },
+      body: form,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `OpenAI API error ${res.status}`);
+    }
+
+    const data = await res.json();
+    return this._parseImageResponse(data);
+  },
+
+  _parseImageResponse(data) {
     const item = data.data?.[0];
     if (item?.b64_json) return `data:image/png;base64,${item.b64_json}`;
     if (item?.url) return item.url;
