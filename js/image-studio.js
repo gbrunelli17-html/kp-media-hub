@@ -162,7 +162,7 @@ Return ONLY the optimized prompt text. No preamble, no explanation, no labels.`;
 
     try {
       const url = await API.generateImage(this._builtPrompt, size);
-      if (!url) throw new Error('No image URL returned.');
+      if (!url) throw new Error('No image returned.');
 
       this._generatedImageUrl = url;
       document.getElementById('img-placeholder').classList.add('hidden');
@@ -227,10 +227,10 @@ Return ONLY the optimized prompt text. No preamble, no explanation, no labels.`;
       document.getElementById('img-placeholder').classList.remove('hidden');
       document.getElementById('img-result').classList.add('hidden');
       document.getElementById('img-placeholder').querySelector('.img-placeholder-title').textContent = 'Generating your image...';
-      document.getElementById('img-placeholder').querySelector('.img-placeholder-sub').textContent = 'DALL·E 3 · this takes ~10 seconds';
+      document.getElementById('img-placeholder').querySelector('.img-placeholder-sub').textContent = 'GPT Image · this takes ~10 seconds';
     } else {
       document.getElementById('img-placeholder').querySelector('.img-placeholder-title').textContent = 'Generated image appears here';
-      document.getElementById('img-placeholder').querySelector('.img-placeholder-sub').textContent = 'DALL·E 3 · ~10 sec per image';
+      document.getElementById('img-placeholder').querySelector('.img-placeholder-sub').textContent = 'GPT Image · ~10 sec per image';
     }
   },
 };
